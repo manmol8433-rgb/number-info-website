@@ -12,7 +12,7 @@
       background:#fff; padding:12px; margin-top:12px;
       border-radius:6px; box-shadow:0 0 5px rgba(0,0,0,.1)
     }
-    .title { font-weight:bold; margin-bottom:8px }
+    .title { font-weight:bold; margin-bottom:6px }
     .error { color:red; text-align:center; margin-top:12px; font-weight:bold }
     .footer { text-align:center; margin-top:20px; color:#777 }
   </style>
@@ -29,57 +29,61 @@
 <div class="footer">⚡ Number Information Service</div>
 
 <script>
-const MAX_INFO = 6;
+const INFO_LIMIT = 4;
+const CHAIN_DEPTH = 2;
+const TIMEOUT = 4000;
 
-function normalize(t) {
+function clean(t) {
   return (t || "").toLowerCase().replace(/\s+/g," ").trim();
 }
-
-function makeKey(info) {
-  return normalize(info.name) + "|" + normalize(info.father_name);
+function makeKey(i) {
+  return clean(i.name) + "|" + clean(i.father_name);
 }
 
-async function fetchAPI(num) {
+async function fetchWithTimeout(url) {
+  const c = new AbortController();
+  setTimeout(() => c.abort(), TIMEOUT);
+  try {
+    const r = await fetch(url, { signal:c.signal });
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+async function callAPI(num) {
   const url =
     "https://api.allorigins.win/raw?url=" +
     encodeURIComponent(
       "https://project-n1s8.onrender.com/?num=" + num + "&key=GOKU"
     );
-  const r = await fetch(url);
-  return r.json();
+  return await fetchWithTimeout(url);
 }
 
 async function searchNumber() {
-  const input = document.getElementById("number").value.trim();
+  const num = document.getElementById("number").value.trim();
   const out = document.getElementById("result");
   out.innerHTML = "Loading...";
 
-  if (!/^[0-9]{10}$/.test(input)) {
+  if (!/^[0-9]{10}$/.test(num)) {
     out.innerHTML = "<div class='error'>❌ Invalid number</div>";
     return;
   }
 
-  let queue = [input];
-  let visited = {};
+  let queue = [{n:num, d:0}];
+  let visited = {[num]:true};
   let seen = {};
   let results = [];
 
-  visited[input] = true;
+  for (let i=0; i<queue.length && results.length<INFO_LIMIT; i++) {
+    const {n,d} = queue[i];
+    if (d > CHAIN_DEPTH) continue;
 
-  for (let i = 0; i < queue.length && results.length < MAX_INFO; i++) {
-    const num = queue[i];
-
-    let data;
-    try {
-      data = await fetchAPI(num);
-    } catch {
-      continue;
-    }
-
+    const data = await callAPI(n);
     if (!data || !Array.isArray(data.result)) continue;
 
     for (const info of data.result) {
-      if (results.length >= MAX_INFO) break;
+      if (results.length >= INFO_LIMIT) break;
 
       const key = makeKey(info);
       if (seen[key]) continue;
@@ -88,10 +92,10 @@ async function searchNumber() {
       results.push(info);
 
       ["mobile","alt_mobile"].forEach(k => {
-        const n = (info[k] || "").replace(/\D/g,"");
-        if (n.length === 10 && !visited[n] && queue.length < MAX_INFO) {
-          visited[n] = true;
-          queue.push(n);
+        const x = (info[k]||"").replace(/\D/g,"");
+        if (x.length===10 && !visited[x]) {
+          visited[x]=true;
+          queue.push({n:x,d:d+1});
         }
       });
     }
@@ -103,18 +107,17 @@ async function searchNumber() {
   }
 
   out.innerHTML = "";
-  results.forEach((info,i) => {
+  results.forEach((i,idx) => {
     out.innerHTML += `
       <div class="card">
-        <div class="title">${i===0?"🟢 SEARCHED":"🟡 RELATED"}</div>
-
-        ${info.mobile ? `📞 <b>Number:</b> ${info.mobile}<br>`:""}
-        ${info.alt_mobile ? `☎️ <b>Alt:</b> ${info.alt_mobile}<br>`:""}
-        ${info.name ? `👤 <b>Name:</b> ${info.name}<br>`:""}
-        ${info.father_name ? `👨 <b>Father:</b> ${info.father_name}<br>`:""}
-        ${info.address ? `🏠 <b>Address:</b><br>${info.address}<br>`:""}
-        ${info.email ? `📧 <b>Email:</b> ${info.email}<br>`:""}
-        ${info.id_number ? `🪪 <b>Aadhaar:</b> ${info.id_number}<br>`:""}
+        <div class="title">${idx===0?"🟢 SEARCHED":"🟡 RELATED"}</div>
+        ${i.mobile?`📞 ${i.mobile}<br>`:""}
+        ${i.alt_mobile?`☎️ ${i.alt_mobile}<br>`:""}
+        ${i.name?`👤 ${i.name}<br>`:""}
+        ${i.father_name?`👨 ${i.father_name}<br>`:""}
+        ${i.address?`🏠 ${i.address}<br>`:""}
+        ${i.email?`📧 ${i.email}<br>`:""}
+        ${i.id_number?`🪪 ${i.id_number}<br>`:""}
       </div>
     `;
   });
