@@ -1,11 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Number Information Checker</title>
+  <title>Number Information</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <style>
-    body { font-family: Arial; padding: 15px; background: #f7f7f7; }
-    input, button { width: 100%; padding: 12px; margin-top: 10px; }
+    body {
+      font-family: Arial;
+      padding: 15px;
+      background: #f5f5f5;
+    }
+    h2 {
+      text-align: center;
+    }
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+    button {
+      background: #e0e0e0;
+      border: none;
+    }
     .card {
       background: #fff;
       padding: 12px;
@@ -13,10 +30,19 @@
       border-radius: 6px;
       box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
-    .title { font-weight: bold; margin-bottom: 8px; }
-    .footer { margin-top: 20px; text-align: center; color: #777; font-size: 13px; }
+    .title {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .footer {
+      margin-top: 25px;
+      text-align: center;
+      color: #777;
+      font-size: 13px;
+    }
   </style>
 </head>
+
 <body>
 
 <h2>📞 Number Information</h2>
@@ -29,8 +55,12 @@
 <div class="footer">⚡ Number Information Service</div>
 
 <script>
+/* ================= CONFIG ================= */
+
 const API_URL = "https://project-n1s8.onrender.com/?num={num}&key=GOKU";
 const MAX_INFO = 5;
+
+/* ================= HELPERS ================= */
 
 function normalize(t) {
   if (!t) return "";
@@ -55,6 +85,8 @@ function getValidNumber(t) {
 function makeDupKey(info) {
   return normalizeName(info.name) + "|" + normalizeName(info.father_name);
 }
+
+/* ================= MAIN ================= */
 
 async function searchNumber() {
   const num = getValidNumber(document.getElementById("number").value);
@@ -81,11 +113,13 @@ async function searchNumber() {
     try {
       const res = await fetch(API_URL.replace("{num}", qnum));
       data = await res.json();
-    } catch {
+    } catch (e) {
       continue;
     }
 
-    if (!data || !Array.isArray(data.result)) continue;
+    if (!data || data.success !== true || !Array.isArray(data.result)) {
+      continue;
+    }
 
     for (const info of data.result) {
       if (infoChain.length >= MAX_INFO) break;
@@ -112,6 +146,7 @@ async function searchNumber() {
   }
 
   out.innerHTML = "";
+
   infoChain.forEach((info, i) => {
     let html = `<div class="card">
       <div class="title">${i === 0 ? "🟢 SEARCHED NUMBER" : "🟡 RELATED NUMBER"}</div>`;
@@ -130,4 +165,3 @@ async function searchNumber() {
 
 </body>
 </html>
-
