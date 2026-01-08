@@ -3,48 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <title>Number Lookup</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- DESIGN FILE -->
+  <!-- CSS -->
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<div class="container" id="app">
+  <div class="app">
 
-  <header>
     <h1>📞 Number Lookup</h1>
-    <div class="owner">crafted by <b>Anmol</b></div>
-    <div class="toggle" onclick="toggleDark()">🌙 Toggle Dark Mode</div>
-  </header>
+    <p class="owner">crafted by <b>Anmol</b></p>
 
-  <input id="number" placeholder="Enter 10-digit mobile number">
+    <button id="darkToggle">🌙 Toggle Dark Mode</button>
 
-  <button onclick="search()">Search</button>
-  <button class="secondary" onclick="clearAll()">Clear</button>
+    <input
+      type="text"
+      id="numberInput"
+      placeholder="Enter 10-digit mobile number"
+      maxlength="13"
+    >
 
-  <div class="loader" id="loader">⏳ Searching...</div>
+    <button id="searchBtn">Search</button>
+    <button id="clearBtn">Clear</button>
 
-  <div id="result"></div>
+    <div id="status"></div>
+    <div id="results"></div>
 
-  <div class="history">
-    <h4>Recent Searches</h4>
-    <div id="history"></div>
+    <h3>Recent Searches</h3>
+    <ul id="recent"></ul>
+
+    <div class="footer">
+      <p><b>About</b></p>
+      <p>This tool shows publicly available number-related information.</p>
+      <p class="small">Data accuracy depends on third-party sources.</p>
+    </div>
+
   </div>
 
-  <footer>
-    <p><b>About</b><br>
-    This tool shows publicly available number-related information.</p>
-
-    <p><b>Disclaimer</b><br>
-    Data accuracy depends on third-party sources.</p>
-  </footer>
-
-</div>
-
-<!-- LOGIC FILE -->
-<script src="logic.js"></script>
+  <!-- JS -->
+  <script src="script.js"></script>
 </body>
 </html>
-
