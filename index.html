@@ -3,36 +3,145 @@
 <head>
   <title>Number Information</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <style>
-    body { font-family: Arial; background:#f5f5f5; padding:15px }
-    h2 { text-align:center }
-    input,button { width:100%; padding:12px; margin-top:10px }
-    button { background:#e0e0e0; border:none }
-    .card {
-      background:#fff; padding:12px; margin-top:12px;
-      border-radius:6px; box-shadow:0 0 5px rgba(0,0,0,.1)
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial;
+      background: linear-gradient(135deg, #fdfdfd, #eef1f7);
+      color: #222;
     }
-    .title { font-weight:bold; margin-bottom:6px }
-    .error { color:red; text-align:center; margin-top:12px; font-weight:bold }
+    .dark body {
+      background: #121212;
+      color: #eee;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+      padding: 20px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .owner {
+      font-size: 13px;
+      color: #666;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+    .toggle {
+      font-size: 12px;
+      cursor: pointer;
+      color: #4f46e5;
+      margin-top: 6px;
+    }
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+    button {
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+    }
+    button.secondary {
+      background: #e5e7eb;
+      color: #111;
+    }
+    .loader {
+      text-align: center;
+      margin-top: 15px;
+      display: none;
+    }
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 14px;
+      margin-top: 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    }
+    .dark .card {
+      background: #1f1f1f;
+    }
+    .title {
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+    .copy {
+      font-size: 12px;
+      color: #4f46e5;
+      cursor: pointer;
+      margin-left: 6px;
+    }
+    .error {
+      color: #dc2626;
+      text-align: center;
+      margin-top: 15px;
+      font-weight: 500;
+    }
+    .history {
+      margin-top: 25px;
+    }
+    footer {
+      font-size: 12px;
+      color: #777;
+      text-align: center;
+      margin-top: 40px;
+    }
   </style>
 </head>
 
 <body>
 
-<h2>📞 Number Information</h2>
+<div class="container" id="app">
 
-<input id="number" placeholder="Enter 10-digit mobile number">
-<button onclick="search()">Search</button>
+  <header>
+    <h1>📞 Number Lookup</h1>
+    <div class="owner">crafted by <b>Anmol</b></div>
+    <div class="toggle" onclick="toggleDark()">🌙 Toggle Dark Mode</div>
+  </header>
 
-<div id="result"></div>
+  <input id="number" placeholder="Enter 10-digit mobile number">
+
+  <button onclick="search()">Search</button>
+  <button class="secondary" onclick="clearAll()">Clear</button>
+
+  <div class="loader" id="loader">⏳ Searching...</div>
+
+  <div id="result"></div>
+
+  <div class="history">
+    <h4>Recent Searches</h4>
+    <div id="history"></div>
+  </div>
+
+  <footer>
+    <p><b>About</b><br>
+    This tool provides publicly available number-related information.</p>
+
+    <p><b>Disclaimer</b><br>
+    Data accuracy depends on third-party sources.</p>
+  </footer>
+
+</div>
 
 <script>
-/* ===== CONFIG ===== */
-const MAX_RESULTS = 4;
-const MAX_DEPTH = 3;   // 🔥 ALT = 3
-const TIMEOUT = 3000;
+/* ================= CONFIG ================= */
+const API_KEY = "GOKU";
+const MAX_DEPTH = 3;     // alt chain
+const MAX_RESULTS = 4;   // unique persons
+const TIMEOUT = 4000;
 
-/* ===== HELPERS ===== */
+/* ================= HELPERS ================= */
 function cleanNum(n) {
   n = (n || "").replace(/\D/g,"");
   if (n.startsWith("91") && n.length > 10) n = n.slice(2);
@@ -43,40 +152,67 @@ function personKey(i) {
          "|" +
          ((i.father_name||"").toLowerCase().trim());
 }
+function toggleDark() {
+  document.getElementById("app").classList.toggle("dark");
+}
+function copyText(t) {
+  navigator.clipboard.writeText(t);
+  alert("Copied");
+}
+function clearAll() {
+  document.getElementById("result").innerHTML = "";
+  document.getElementById("loader").style.display = "none";
+}
+function addHistory(n) {
+  let h = JSON.parse(localStorage.getItem("history") || "[]");
+  if (!h.includes(n)) h.unshift(n);
+  h = h.slice(0,5);
+  localStorage.setItem("history", JSON.stringify(h));
+  document.getElementById("history").innerHTML = h.join("<br>");
+}
 
-/* ===== API CALL ===== */
-async function fetchAPI(num) {
+/* ================= API CALL ================= */
+async function callAPI(num) {
+  const rawUrl =
+    "https://project-n1s8.onrender.com/?num=" + num + "&key=" + API_KEY;
+
   const url =
-    "https://api.allorigins.win/raw?url=" +
-    encodeURIComponent(
-      "https://project-n1s8.onrender.com/?num=" + num + "&key=GOKU"
-    );
+    "https://api.allorigins.win/raw?url=" + encodeURIComponent(rawUrl);
+
   try {
-    const c = new AbortController();
-    setTimeout(()=>c.abort(), TIMEOUT);
-    const r = await fetch(url,{signal:c.signal});
-    let d = await r.json();
-    if (typeof d === "string") d = JSON.parse(d);
-    if (d && d.contents) d = JSON.parse(d.contents);
-    return d;
+    const controller = new AbortController();
+    setTimeout(()=>controller.abort(), TIMEOUT);
+
+    const res = await fetch(url,{signal:controller.signal});
+    let data = await res.json();
+
+    if (typeof data === "string") data = JSON.parse(data);
+    if (data && data.contents) data = JSON.parse(data.contents);
+
+    return data;
   } catch {
     return null;
   }
 }
 
-/* ===== MAIN ===== */
+/* ================= MAIN SEARCH ================= */
 async function search() {
-  const start = cleanNum(document.getElementById("number").value);
+  const input = document.getElementById("number").value.trim();
+  const start = cleanNum(input);
   const out = document.getElementById("result");
-  out.innerHTML = "Loading...";
 
   if (!start) {
-    out.innerHTML = "<div class='error'>Invalid number</div>";
+    out.innerHTML = "<div class='error'>Please enter a valid 10-digit number</div>";
     return;
   }
 
+  out.innerHTML = "";
+  document.getElementById("loader").style.display = "block";
+
+  addHistory(start);
+
   let queue = [{n:start, d:0}];
-  let seenNums = {[start]:1};
+  let seenNums = {[start]:true};
   let seenPeople = {};
   let results = [];
 
@@ -86,20 +222,20 @@ async function search() {
     const {n,d} = queue[i];
     if (d > MAX_DEPTH) continue;
 
-    const data = await fetchAPI(n);
+    const data = await callAPI(n);
     if (!data || !Array.isArray(data.result)) continue;
 
     for (const info of data.result) {
       const key = personKey(info);
       if (seenPeople[key]) continue;
 
-      seenPeople[key] = 1;
+      seenPeople[key] = true;
       results.push(info);
 
       ["mobile","alt_mobile"].forEach(x=>{
         const cn = cleanNum(info[x]);
         if (cn && !seenNums[cn]) {
-          seenNums[cn] = 1;
+          seenNums[cn] = true;
           queue.push({n:cn, d:d+1});
         }
       });
@@ -108,17 +244,18 @@ async function search() {
     }
   }
 
+  document.getElementById("loader").style.display = "none";
+
   if (!results.length) {
-    out.innerHTML = "<div class='error'>DATA NOT FOUND</div>";
+    out.innerHTML = "<div class='error'>No data available for this number</div>";
     return;
   }
 
-  out.innerHTML = "";
   results.forEach((i,idx)=>{
     out.innerHTML += `
       <div class="card">
-        <div class="title">${idx===0?"SEARCHED":"RELATED"}</div>
-        ${i.mobile?`📞 ${cleanNum(i.mobile)}<br>`:""}
+        <div class="title">${idx===0?"🟢 SEARCHED":"🟡 RELATED"}</div>
+        ${i.mobile?`📞 ${cleanNum(i.mobile)} <span class="copy" onclick="copyText('${cleanNum(i.mobile)}')">📋</span><br>`:""}
         ${i.alt_mobile?`☎️ ${cleanNum(i.alt_mobile)}<br>`:""}
         ${i.name?`👤 ${i.name}<br>`:""}
         ${i.father_name?`👨 ${i.father_name}<br>`:""}
