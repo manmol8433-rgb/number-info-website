@@ -3,48 +3,17 @@
 <head>
   <title>Number Information</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
   <style>
-    body {
-      font-family: Arial;
-      background: #f5f5f5;
-      padding: 15px;
-    }
-    h2 {
-      text-align: center;
-    }
-    input, button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 10px;
-      font-size: 16px;
-    }
-    button {
-      background: #e0e0e0;
-      border: none;
-    }
+    body { font-family: Arial; background:#f5f5f5; padding:15px }
+    h2 { text-align:center }
+    input,button { width:100%; padding:12px; margin-top:10px }
+    button { background:#e0e0e0; border:none }
     .card {
-      background: #fff;
-      padding: 12px;
-      margin-top: 12px;
-      border-radius: 6px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      background:#fff; padding:12px; margin-top:12px;
+      border-radius:6px; box-shadow:0 0 5px rgba(0,0,0,.1)
     }
-    .title {
-      font-weight: bold;
-      margin-bottom: 6px;
-    }
-    .error {
-      color: red;
-      text-align: center;
-      margin-top: 12px;
-      font-weight: bold;
-    }
-    .footer {
-      text-align: center;
-      margin-top: 20px;
-      color: #777;
-    }
+    .title { font-weight:bold; margin-bottom:6px }
+    .error { color:red; text-align:center; margin-top:12px; font-weight:bold }
   </style>
 </head>
 
@@ -53,125 +22,109 @@
 <h2>📞 Number Information</h2>
 
 <input id="number" placeholder="Enter 10-digit mobile number">
-<button onclick="searchNumber()">Search</button>
+<button onclick="search()">Search</button>
 
 <div id="result"></div>
-<div class="footer">⚡ Number Information Service</div>
 
 <script>
-/* ================= CONFIG ================= */
-const MAX_DEPTH = 5;        // alt chain depth
-const MAX_RESULTS = 10;     // safety cap (unique filter handles rest)
+/* ===== CONFIG ===== */
+const MAX_RESULTS = 4;
+const MAX_DEPTH = 3;   // 🔥 ALT = 3
+const TIMEOUT = 3000;
 
-/* ================= HELPERS ================= */
-function normalizeText(t) {
-  return (t || "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function makePersonKey(info) {
-  return normalizeText(info.name) + "|" + normalizeText(info.father_name);
-}
-
-function cleanNumber(n) {
-  if (!n) return null;
-  n = String(n).replace(/\D/g, "");
-  if (n.startsWith("91") && n.length > 10) {
-    n = n.slice(2);
-  }
+/* ===== HELPERS ===== */
+function cleanNum(n) {
+  n = (n || "").replace(/\D/g,"");
+  if (n.startsWith("91") && n.length > 10) n = n.slice(2);
   return n.length === 10 ? n : null;
 }
+function personKey(i) {
+  return ((i.name||"").toLowerCase().trim()) +
+         "|" +
+         ((i.father_name||"").toLowerCase().trim());
+}
 
-/* ================= API CALL ================= */
-async function callAPI(num) {
+/* ===== API CALL ===== */
+async function fetchAPI(num) {
   const url =
     "https://api.allorigins.win/raw?url=" +
     encodeURIComponent(
       "https://project-n1s8.onrender.com/?num=" + num + "&key=GOKU"
     );
-
   try {
-    const res = await fetch(url);
-    let data = await res.json();
-
-    // safety: sometimes proxy gives string
-    if (typeof data === "string") {
-      data = JSON.parse(data);
-    }
-    if (data && data.contents) {
-      data = JSON.parse(data.contents);
-    }
-
-    return data;
+    const c = new AbortController();
+    setTimeout(()=>c.abort(), TIMEOUT);
+    const r = await fetch(url,{signal:c.signal});
+    let d = await r.json();
+    if (typeof d === "string") d = JSON.parse(d);
+    if (d && d.contents) d = JSON.parse(d.contents);
+    return d;
   } catch {
     return null;
   }
 }
 
-/* ================= MAIN LOGIC ================= */
-async function searchNumber() {
-  const input = document.getElementById("number").value.trim();
+/* ===== MAIN ===== */
+async function search() {
+  const start = cleanNum(document.getElementById("number").value);
   const out = document.getElementById("result");
   out.innerHTML = "Loading...";
 
-  const startNum = cleanNumber(input);
-  if (!startNum) {
-    out.innerHTML = "<div class='error'>❌ Invalid number</div>";
+  if (!start) {
+    out.innerHTML = "<div class='error'>Invalid number</div>";
     return;
   }
 
-  let queue = [{ num: startNum, level: 0 }];
-  let visitedNumbers = { [startNum]: true };
+  let queue = [{n:start, d:0}];
+  let seenNums = {[start]:1};
   let seenPeople = {};
   let results = [];
 
-  for (let i = 0; i < queue.length; i++) {
-    const { num, level } = queue[i];
-    if (level > MAX_DEPTH) continue;
+  for (let i=0;i<queue.length;i++) {
+    if (results.length >= MAX_RESULTS) break;
 
-    const data = await callAPI(num);
+    const {n,d} = queue[i];
+    if (d > MAX_DEPTH) continue;
+
+    const data = await fetchAPI(n);
     if (!data || !Array.isArray(data.result)) continue;
 
     for (const info of data.result) {
-      const personKey = makePersonKey(info);
-      if (!personKey || seenPeople[personKey]) continue;
+      const key = personKey(info);
+      if (seenPeople[key]) continue;
 
-      seenPeople[personKey] = true;
+      seenPeople[key] = 1;
       results.push(info);
 
-      if (results.length >= MAX_RESULTS) break;
-
-      // alt chain handling
-      ["mobile", "alt_mobile"].forEach(k => {
-        const nextNum = cleanNumber(info[k]);
-        if (nextNum && !visitedNumbers[nextNum]) {
-          visitedNumbers[nextNum] = true;
-          queue.push({ num: nextNum, level: level + 1 });
+      ["mobile","alt_mobile"].forEach(x=>{
+        const cn = cleanNum(info[x]);
+        if (cn && !seenNums[cn]) {
+          seenNums[cn] = 1;
+          queue.push({n:cn, d:d+1});
         }
       });
+
+      if (results.length >= MAX_RESULTS) break;
     }
   }
 
   if (!results.length) {
-    out.innerHTML = "<div class='error'>❌ DATA NOT FOUND</div>";
+    out.innerHTML = "<div class='error'>DATA NOT FOUND</div>";
     return;
   }
 
-  /* ================= RENDER ================= */
   out.innerHTML = "";
-  results.forEach((info, idx) => {
+  results.forEach((i,idx)=>{
     out.innerHTML += `
       <div class="card">
-        <div class="title">${idx === 0 ? "🟢 SEARCHED" : "🟡 RELATED"}</div>
-        ${info.mobile ? `📞 ${cleanNumber(info.mobile)}<br>` : ""}
-        ${info.alt_mobile ? `☎️ ${cleanNumber(info.alt_mobile)}<br>` : ""}
-        ${info.name ? `👤 ${info.name}<br>` : ""}
-        ${info.father_name ? `👨 ${info.father_name}<br>` : ""}
-        ${info.address ? `🏠 ${info.address}<br>` : ""}
-        ${info.email ? `📧 ${info.email}<br>` : ""}
-        ${info.id_number ? `🪪 ${info.id_number}<br>` : ""}
+        <div class="title">${idx===0?"SEARCHED":"RELATED"}</div>
+        ${i.mobile?`📞 ${cleanNum(i.mobile)}<br>`:""}
+        ${i.alt_mobile?`☎️ ${cleanNum(i.alt_mobile)}<br>`:""}
+        ${i.name?`👤 ${i.name}<br>`:""}
+        ${i.father_name?`👨 ${i.father_name}<br>`:""}
+        ${i.address?`🏠 ${i.address}<br>`:""}
+        ${i.email?`📧 ${i.email}<br>`:""}
+        ${i.id_number?`🪪 ${i.id_number}<br>`:""}
       </div>
     `;
   });
