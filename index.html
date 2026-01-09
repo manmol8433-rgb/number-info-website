@@ -1,44 +1,135 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Number Lookup</title>
-
-  <link rel="stylesheet" href="style.css" />
+  <title>Number Information</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial; background:#f5f5f5; padding:15px }
+    h2 { text-align:center }
+    input,button { width:100%; padding:12px; margin-top:10px }
+    button { background:#e0e0e0; border:none }
+    .card {
+      background:#fff; padding:12px; margin-top:12px;
+      border-radius:6px; box-shadow:0 0 5px rgba(0,0,0,.1)
+    }
+    .title { font-weight:bold; margin-bottom:6px }
+    .error { color:red; text-align:center; margin-top:12px; font-weight:bold }
+  </style>
 </head>
 
 <body>
-  <div class="app">
-    <h1>📞 Number Lookup</h1>
-    <p class="owner">crafted by <b>Anmol</b></p>
 
-    <button id="darkToggle">🌙 Toggle Dark Mode</button>
+<h2>📞 Number Information</h2>
 
-    <input
-      type="text"
-      id="numberInput"
-      placeholder="Enter 10-digit mobile number"
-      maxlength="13"
-    />
+<input id="number" placeholder="Enter 10-digit mobile number">
+<button onclick="search()">Search</button>
 
-    <button id="searchBtn">Search</button>
-    <button id="clearBtn">Clear</button>
+<div id="result"></div>
 
-    <div id="status"></div>
-    <div id="results"></div>
+<script>
+/* ===== CONFIG ===== */
+const MAX_RESULTS = 4;
+const MAX_DEPTH = 3;   // 🔥 ALT = 3
+const TIMEOUT = 3000;
 
-    <h3>Recent Searches</h3>
-    <ul id="recent"></ul>
+/* ===== HELPERS ===== */
+function cleanNum(n) {
+  n = (n || "").replace(/\D/g,"");
+  if (n.startsWith("91") && n.length > 10) n = n.slice(2);
+  return n.length === 10 ? n : null;
+}
+function personKey(i) {
+  return ((i.name||"").toLowerCase().trim()) +
+         "|" +
+         ((i.father_name||"").toLowerCase().trim());
+}
 
-    <div class="footer">
-      <p><b>About</b></p>
-      <p>This tool shows publicly available number-related information.</p>
-      <p class="small">Data accuracy depends on third-party sources.</p>
-    </div>
-  </div>
+/* ===== API CALL ===== */
+async function fetchAPI(num) {
+  const url =
+    "https://api.allorigins.win/raw?url=" +
+    encodeURIComponent(
+      "https://project-n1s8.onrender.com/?num=" + num + "&key=GOKU"
+    );
+  try {
+    const c = new AbortController();
+    setTimeout(()=>c.abort(), TIMEOUT);
+    const r = await fetch(url,{signal:c.signal});
+    let d = await r.json();
+    if (typeof d === "string") d = JSON.parse(d);
+    if (d && d.contents) d = JSON.parse(d.contents);
+    return d;
+  } catch {
+    return null;
+  }
+}
 
-  <!-- JS MUST BE AT END -->
-  <script src="logic.js"></script>
+/* ===== MAIN ===== */
+async function search() {
+  const start = cleanNum(document.getElementById("number").value);
+  const out = document.getElementById("result");
+  out.innerHTML = "Loading...";
+
+  if (!start) {
+    out.innerHTML = "<div class='error'>Invalid number</div>";
+    return;
+  }
+
+  let queue = [{n:start, d:0}];
+  let seenNums = {[start]:1};
+  let seenPeople = {};
+  let results = [];
+
+  for (let i=0;i<queue.length;i++) {
+    if (results.length >= MAX_RESULTS) break;
+
+    const {n,d} = queue[i];
+    if (d > MAX_DEPTH) continue;
+
+    const data = await fetchAPI(n);
+    if (!data || !Array.isArray(data.result)) continue;
+
+    for (const info of data.result) {
+      const key = personKey(info);
+      if (seenPeople[key]) continue;
+
+      seenPeople[key] = 1;
+      results.push(info);
+
+      ["mobile","alt_mobile"].forEach(x=>{
+        const cn = cleanNum(info[x]);
+        if (cn && !seenNums[cn]) {
+          seenNums[cn] = 1;
+          queue.push({n:cn, d:d+1});
+        }
+      });
+
+      if (results.length >= MAX_RESULTS) break;
+    }
+  }
+
+  if (!results.length) {
+    out.innerHTML = "<div class='error'>DATA NOT FOUND</div>";
+    return;
+  }
+
+  out.innerHTML = "";
+  results.forEach((i,idx)=>{
+    out.innerHTML += `
+      <div class="card">
+        <div class="title">${idx===0?"SEARCHED":"RELATED"}</div>
+        ${i.mobile?`📞 ${cleanNum(i.mobile)}<br>`:""}
+        ${i.alt_mobile?`☎️ ${cleanNum(i.alt_mobile)}<br>`:""}
+        ${i.name?`👤 ${i.name}<br>`:""}
+        ${i.father_name?`👨 ${i.father_name}<br>`:""}
+        ${i.address?`🏠 ${i.address}<br>`:""}
+        ${i.email?`📧 ${i.email}<br>`:""}
+        ${i.id_number?`🪪 ${i.id_number}<br>`:""}
+      </div>
+    `;
+  });
+}
+</script>
+
 </body>
 </html>
