@@ -1,22 +1,21 @@
 body {
   margin: 0;
-  min-height: 100vh;
   font-family: Arial, sans-serif;
-  background:
-    radial-gradient(circle at top left, #2a2f55 0%, transparent 45%),
-    radial-gradient(circle at top right, #1e2340 0%, transparent 50%),
-    linear-gradient(180deg, #0b0f1a, #05060c);
+  background: linear-gradient(135deg, #1f2a44, #0f172a);
   color: #fff;
+}
+
+body.dark {
+  background: #0b1020;
 }
 
 .app {
   max-width: 420px;
   margin: 40px auto;
-  padding: 22px;
-  border-radius: 18px;
-  background: rgba(255,255,255,0.06);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 0 40px rgba(90,120,255,0.25);
+  background: rgba(255,255,255,0.05);
+  padding: 20px;
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
 }
 
 h1 {
@@ -25,76 +24,65 @@ h1 {
 
 .owner {
   text-align: center;
-  color: #aaa;
-  margin-top: -10px;
+  opacity: 0.8;
+}
+
+input, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 10px;
+  border: none;
+  font-size: 16px;
 }
 
 input {
-  width: 100%;
-  padding: 14px;
-  margin-top: 15px;
-  border-radius: 10px;
-  border: none;
-  outline: none;
-  font-size: 16px;
+  background: #fff;
 }
 
 button {
-  width: 100%;
-  padding: 14px;
-  margin-top: 12px;
-  border-radius: 10px;
-  border: none;
-  font-size: 16px;
   cursor: pointer;
 }
 
-#searchBtn {
-  background: linear-gradient(90deg, #6a5cff, #4facfe);
-  color: white;
-  box-shadow: 0 0 20px rgba(90,120,255,0.6);
-}
-
-#clearBtn {
-  background: rgba(255,255,255,0.15);
+button.primary {
+  background: linear-gradient(90deg, #6a5cff, #3aa0ff);
   color: #fff;
-}
-
-#darkToggle {
-  background: transparent;
-  color: #9aa4ff;
-  margin-bottom: 10px;
 }
 
 #status {
   margin-top: 15px;
-  font-weight: bold;
+}
+
+.error {
+  color: #ff6b6b;
+}
+
+.loading {
+  color: #ffd166;
 }
 
 .card {
   background: rgba(255,255,255,0.08);
   padding: 12px;
-  border-radius: 12px;
-  margin-top: 15px;
+  margin-top: 10px;
+  border-radius: 10px;
+}
+
+ul {
+  padding-left: 20px;
+}
+
+ul li {
+  cursor: pointer;
+  margin-top: 5px;
 }
 
 .footer {
-  margin-top: 25px;
+  margin-top: 20px;
   font-size: 14px;
-  color: #aaa;
+  opacity: 0.8;
 }
 
 .small {
   font-size: 12px;
-}
-
-/* LIGHT MODE */
-.light {
-  background: #f2f4ff;
-  color: #000;
-}
-
-.light .app {
-  background: #fff;
-  box-shadow: none;
 }
