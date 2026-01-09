@@ -1,140 +1,113 @@
-// ================== ELEMENTS ==================
 const input = document.getElementById("numberInput");
 const searchBtn = document.getElementById("searchBtn");
 const clearBtn = document.getElementById("clearBtn");
 const statusDiv = document.getElementById("status");
 const resultsDiv = document.getElementById("results");
-const recentUl = document.getElementById("recent");
-const darkBtn = document.getElementById("darkToggle");
+const recentDiv = document.getElementById("recent");
 
-// ================== API CONFIG ==================
-const API_BASE = "https://ct-n1s8.onrender.com/?num=";
-const API_KEY = "&key=GOKU";
-const MAX_RESULTS = 3;
+const API_BASE = "https://ct-n1s8.onrender.com"; // tumhara API base
 
-// ================== EVENTS ==================
+// ================= SEARCH =================
 searchBtn.addEventListener("click", searchNumber);
-clearBtn.addEventListener("click", clearAll);
 
-// ================== MAIN SEARCH ==================
 async function searchNumber() {
   let number = input.value.trim();
 
-  // clean input
-  number = number.replace(/\s+/g, "");
-  if (number.startsWith("+91")) number = number.slice(3);
-  if (number.startsWith("91") && number.length > 10) number = number.slice(-10);
-
-  if (!/^\d{10}$/.test(number)) {
-    statusDiv.innerHTML = "❌ Enter valid 10-digit number";
+  if (!number) {
+    showStatus("❌ Enter a number", "error");
     return;
   }
 
-  statusDiv.innerHTML = "⏳ Loading...";
+  // +91 remove
+  if (number.startsWith("91") && number.length > 10) {
+    number = number.slice(-10);
+  }
+
+  showStatus("⏳ Loading...", "loading");
   resultsDiv.innerHTML = "";
 
   try {
-    const res = await fetch(API_BASE + number + API_KEY);
+    const res = await fetch(`${API_BASE}/${number}`, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json"
+      }
+    });
 
-    if (!res.ok) {
-      throw new Error("Network error");
-    }
+    if (!res.ok) throw new Error("API response not OK");
 
     const data = await res.json();
 
-    if (!data.success || !Array.isArray(data.result) || data.result.length === 0) {
-      statusDiv.innerHTML = "❌ No data found";
+    if (!data.success || !data.result || data.result.length === 0) {
+      showStatus("❌ No data found", "error");
       return;
     }
 
-    statusDiv.innerHTML = "";
+    showStatus("✅ Data found", "success");
     renderResults(data.result);
     saveRecent(number);
 
   } catch (err) {
     console.error(err);
-    statusDiv.innerHTML = "❌ API error";
+    showStatus("❌ API error", "error");
   }
 }
 
-// ================== RENDER RESULTS ==================
+// ================= RENDER RESULTS =================
 function renderResults(list) {
   resultsDiv.innerHTML = "";
 
-  const seen = new Set();
-  let count = 0;
-
-  for (let info of list) {
-    if (count >= MAX_RESULTS) break;
-
-    const key = (info.name || "") + "|" + (info.father_name || "");
-    if (seen.has(key)) continue;
-    seen.add(key);
-
-    const card = document.createElement("div");
-    card.className = "card";
-
-    let html = `<b>Result ${count + 1}</b><br>`;
-
-    if (info.mobile) html += `<b>Mobile:</b> ${info.mobile}<br>`;
-    if (info.alt_mobile) html += `<b>Alt:</b> ${info.alt_mobile}<br>`;
-    if (info.name) html += `<b>Name:</b> ${info.name}<br>`;
-    if (info.father_name) html += `<b>Father:</b> ${info.father_name}<br>`;
-    if (info.address) html += `<b>Address:</b> ${info.address}<br>`;
-    if (info.email) html += `<b>Email:</b> ${info.email}<br>`;
-    if (info.id_number) html += `<b>ID:</b> ${info.id_number}<br>`;
-
-    card.innerHTML = html;
-    resultsDiv.appendChild(card);
-    count++;
+  // max 3 unique results
+  const unique = [];
+  for (let item of list) {
+    const key = `${item.name}-${item.father_name}`;
+    if (!unique.some(u => u.key === key)) {
+      unique.push({ key, item });
+    }
+    if (unique.length === 3) break;
   }
+
+  unique.forEach(({ item }) => {
+    const div = document.createElement("div");
+    div.className = "card";
+
+    div.innerHTML = `
+      <p><b>Name:</b> ${item.name || "N/A"}</p>
+      <p><b>Father:</b> ${item.father_name || "N/A"}</p>
+      <p><b>Mobile:</b> ${item.mobile || "N/A"}</p>
+      ${item.alt_mobile ? `<p><b>Alt:</b> ${item.alt_mobile}</p>` : ""}
+      ${item.circle ? `<p><b>Circle:</b> ${item.circle}</p>` : ""}
+      ${item.address ? `<p><b>Address:</b> ${item.address}</p>` : ""}
+    `;
+
+    resultsDiv.appendChild(div);
+  });
 }
 
-// ================== RECENT SEARCH ==================
+// ================= STATUS =================
+function showStatus(text, type) {
+  statusDiv.innerHTML = text;
+  statusDiv.className = type;
+}
+
+// ================= RECENT =================
 function saveRecent(num) {
-  let arr = JSON.parse(localStorage.getItem("recent") || "[]");
-  arr = arr.filter(n => n !== num);
-  arr.unshift(num);
-  arr = arr.slice(0, 5);
-  localStorage.setItem("recent", JSON.stringify(arr));
+  let recent = JSON.parse(localStorage.getItem("recent") || "[]");
+  recent = [num, ...recent.filter(n => n !== num)].slice(0, 5);
+  localStorage.setItem("recent", JSON.stringify(recent));
   renderRecent();
 }
 
 function renderRecent() {
-  recentUl.innerHTML = "";
-  const arr = JSON.parse(localStorage.getItem("recent") || "[]");
-
-  arr.forEach(n => {
-    const li = document.createElement("li");
-    li.textContent = n;
-    li.onclick = () => {
-      input.value = n;
-      searchNumber();
-    };
-    recentUl.appendChild(li);
-  });
+  let recent = JSON.parse(localStorage.getItem("recent") || "[]");
+  recentDiv.innerHTML = recent.map(n => `<li>${n}</li>`).join("");
 }
 
-// ================== CLEAR ==================
-function clearAll() {
+renderRecent();
+
+// ================= CLEAR =================
+clearBtn.addEventListener("click", () => {
   input.value = "";
   resultsDiv.innerHTML = "";
   statusDiv.innerHTML = "";
-}
-
-// ================== DARK MODE ==================
-darkBtn.addEventListener("click", () => {
-  document.body.classList.toggle("dark");
-  localStorage.setItem(
-    "theme",
-    document.body.classList.contains("dark") ? "dark" : "light"
-  );
 });
-
-if (localStorage.getItem("theme") === "dark") {
-  document.body.classList.add("dark");
-}
-
-// init
-renderRecent();
-              
