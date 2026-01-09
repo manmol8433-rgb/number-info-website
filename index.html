@@ -1,38 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Number Lookup</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Mobile friendly -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 
   <div class="app">
 
+    <!-- Header -->
     <h1>📞 Number Lookup</h1>
     <p class="owner">crafted by <b>Anmol</b></p>
 
+    <!-- Dark mode toggle -->
     <button id="darkToggle">🌙 Toggle Dark Mode</button>
 
+    <!-- Input -->
     <input
       type="text"
       id="numberInput"
       placeholder="Enter 10-digit mobile number"
       maxlength="13"
-    >
+      autocomplete="off"
+    />
 
-    <button id="searchBtn">Search</button>
-    <button id="clearBtn">Clear</button>
+    <!-- Buttons -->
+    <button id="searchBtn" class="primary">Search</button>
+    <button id="clearBtn" class="secondary">Clear</button>
 
+    <!-- Status (Loading / Error) -->
     <div id="status"></div>
-    <div id="results"></div>
 
+    <!-- Results -->
+    <div id="result"></div>
+
+    <!-- Recent searches -->
     <h3>Recent Searches</h3>
     <ul id="recent"></ul>
 
+    <!-- Footer -->
     <div class="footer">
       <p><b>About</b></p>
       <p>This tool shows publicly available number-related information.</p>
@@ -43,5 +56,6 @@
 
   <!-- JS -->
   <script src="logic.js"></script>
+
 </body>
 </html>
