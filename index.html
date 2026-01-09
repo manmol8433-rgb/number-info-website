@@ -27,114 +27,96 @@
 <div id="result"></div>
 
 <script>
-/* ===== CONFIG ===== */
-const MAX_RESULTS = 10;
 const MAX_DEPTH = 5;
-const TIMEOUT = 6000;
+const MAX_RESULTS = 15;
 
-/* ===== HELPERS ===== */
+/* helpers */
 function cleanNum(n) {
   n = (n || "").replace(/\D/g,"");
   if (n.startsWith("91") && n.length > 10) n = n.slice(2);
   return n.length === 10 ? n : null;
 }
 
-/* STRONG PERSON KEY */
 function personKey(i) {
   return [
-    (i.name||"").toLowerCase().trim(),
-    (i.father_name||"").toLowerCase().trim(),
-    cleanNum(i.mobile) || "",
-    cleanNum(i.alt_mobile) || ""
+    (i.name||"").toLowerCase(),
+    (i.father_name||"").toLowerCase(),
+    cleanNum(i.mobile)||"",
+    cleanNum(i.alt_mobile)||""
   ].join("|");
 }
 
-/* MERGE DATA (IMPORTANT FIX) */
-function mergePerson(oldP, newP) {
-  const merged = { ...oldP };
-  for (const k in newP) {
-    if (!merged[k] && newP[k]) {
-      merged[k] = newP[k];
-    }
-  }
-  return merged;
-}
-
-/* ===== API ===== */
+/* 🔥 FIXED API */
 async function fetchAPI(num) {
   const url =
     "https://api.allorigins.win/raw?url=" +
     encodeURIComponent(
       "https://project-n1s8.onrender.com/?num=" + num + "&key=GOKU"
     );
+
   try {
-    const c = new AbortController();
-    setTimeout(()=>c.abort(), TIMEOUT);
-    const r = await fetch(url,{signal:c.signal});
-    let d = await r.json();
-    if (typeof d === "string") d = JSON.parse(d);
-    if (d && d.contents) d = JSON.parse(d.contents);
-    return d;
+    const r = await fetch(url);
+    const txt = await r.text();
+
+    const s = txt.indexOf("{");
+    const e = txt.lastIndexOf("}");
+    if (s === -1 || e === -1) return null;
+
+    const j = JSON.parse(txt.slice(s, e+1));
+    return Array.isArray(j.result) ? j : null;
   } catch {
     return null;
   }
 }
 
-/* ===== MAIN ===== */
 async function search() {
-  const start = cleanNum(document.getElementById("number").value);
-  const out = document.getElementById("result");
-  out.innerHTML = "Searching...";
+  const start = cleanNum(number.value);
+  result.innerHTML = "Searching...";
 
   if (!start) {
-    out.innerHTML = "<div class='error'>Invalid number</div>";
+    result.innerHTML = "<div class='error'>Invalid number</div>";
     return;
   }
 
-  let queue = [{ n: start, d: 0 }];
-  let seenNums = { [start]: 1 };
-  let peopleMap = {};
+  let queue = [{ n:start, d:0 }];
+  let seenNums = { [start]:1 };
+  let seenPeople = {};
   let results = [];
 
-  for (let i = 0; i < queue.length; i++) {
+  for (let i=0;i<queue.length;i++) {
     if (results.length >= MAX_RESULTS) break;
 
-    const { n, d } = queue[i];
+    const {n,d} = queue[i];
     if (d > MAX_DEPTH) continue;
 
     const data = await fetchAPI(n);
-    if (!data || !Array.isArray(data.result)) continue;
+    if (!data) continue;
 
     for (const info of data.result) {
       const key = personKey(info);
+      if (seenPeople[key]) continue;
 
-      if (peopleMap[key]) {
-        peopleMap[key] = mergePerson(peopleMap[key], info);
-      } else {
-        peopleMap[key] = info;
-        results.push(peopleMap[key]);
-      }
+      seenPeople[key] = 1;
+      results.push(info);
 
       ["mobile","alt_mobile"].forEach(x=>{
         const cn = cleanNum(info[x]);
         if (cn && !seenNums[cn]) {
           seenNums[cn] = 1;
-          queue.push({ n: cn, d: d + 1 });
+          queue.push({ n:cn, d:d+1 });
         }
       });
-
-      if (results.length >= MAX_RESULTS) break;
     }
   }
 
   if (!results.length) {
-    out.innerHTML = "<div class='error'>DATA NOT FOUND</div>";
+    result.innerHTML = "<div class='error'>DATA NOT FOUND</div>";
     return;
   }
 
-  out.innerHTML = "";
+  result.innerHTML = "";
   results.forEach((i,idx)=>{
-    out.innerHTML += `
+    result.innerHTML += `
       <div class="card">
         <div class="title">${idx===0?"SEARCHED":"RELATED"}</div>
         ${i.mobile?`📞 ${cleanNum(i.mobile)}<br>`:""}
