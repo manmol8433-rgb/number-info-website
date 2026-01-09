@@ -5,92 +5,74 @@ const statusDiv = document.getElementById("status");
 const resultsDiv = document.getElementById("results");
 const recentDiv = document.getElementById("recent");
 
-const API_BASE = "https://ct-n1s8.onrender.com"; // tumhara API base
+const API_URL = "https://ct-n1s8.onrender.com";
 
-// ================= SEARCH =================
-searchBtn.addEventListener("click", searchNumber);
+searchBtn.onclick = () => searchNumber();
+clearBtn.onclick = clearAll;
 
 async function searchNumber() {
   let number = input.value.trim();
 
   if (!number) {
-    showStatus("❌ Enter a number", "error");
+    statusDiv.innerHTML = "❌ Enter number";
     return;
   }
 
-  // +91 remove
-  if (number.startsWith("91") && number.length > 10) {
-    number = number.slice(-10);
-  }
+  // remove +91 or 91
+  number = number.replace(/^(\+91|91)/, "");
+  number = number.replace(/\s+/g, "");
 
-  showStatus("⏳ Loading...", "loading");
+  statusDiv.innerHTML = "⏳ Loading...";
   resultsDiv.innerHTML = "";
 
   try {
-    const res = await fetch(`${API_BASE}/${number}`, {
-      method: "GET",
-      headers: {
-        "Accept": "application/json"
-      }
-    });
+    const response = await fetch(API_URL + "/" + number);
+    const data = await response.json();
 
-    if (!res.ok) throw new Error("API response not OK");
-
-    const data = await res.json();
-
-    if (!data.success || !data.result || data.result.length === 0) {
-      showStatus("❌ No data found", "error");
+    if (!data || !data.success || !data.result || data.result.length === 0) {
+      statusDiv.innerHTML = "❌ No data found";
       return;
     }
 
-    showStatus("✅ Data found", "success");
-    renderResults(data.result);
+    statusDiv.innerHTML = "✅ Data found";
+    showResults(data.result);
     saveRecent(number);
 
-  } catch (err) {
-    console.error(err);
-    showStatus("❌ API error", "error");
+  } catch (e) {
+    console.error(e);
+    statusDiv.innerHTML = "❌ API error";
   }
 }
 
-// ================= RENDER RESULTS =================
-function renderResults(list) {
+function showResults(list) {
   resultsDiv.innerHTML = "";
 
-  // max 3 unique results
-  const unique = [];
-  for (let item of list) {
-    const key = `${item.name}-${item.father_name}`;
-    if (!unique.some(u => u.key === key)) {
-      unique.push({ key, item });
-    }
-    if (unique.length === 3) break;
-  }
+  const used = new Set();
+  let count = 0;
 
-  unique.forEach(({ item }) => {
+  for (let item of list) {
+    const key = item.name + item.father_name;
+    if (used.has(key)) continue;
+    used.add(key);
+
     const div = document.createElement("div");
     div.className = "card";
 
     div.innerHTML = `
-      <p><b>Name:</b> ${item.name || "N/A"}</p>
-      <p><b>Father:</b> ${item.father_name || "N/A"}</p>
-      <p><b>Mobile:</b> ${item.mobile || "N/A"}</p>
+      <p><b>Name:</b> ${item.name || "-"}</p>
+      <p><b>Father:</b> ${item.father_name || "-"}</p>
+      <p><b>Mobile:</b> ${item.mobile || "-"}</p>
       ${item.alt_mobile ? `<p><b>Alt:</b> ${item.alt_mobile}</p>` : ""}
       ${item.circle ? `<p><b>Circle:</b> ${item.circle}</p>` : ""}
       ${item.address ? `<p><b>Address:</b> ${item.address}</p>` : ""}
     `;
 
     resultsDiv.appendChild(div);
-  });
+    count++;
+    if (count === 3) break;
+  }
 }
 
-// ================= STATUS =================
-function showStatus(text, type) {
-  statusDiv.innerHTML = text;
-  statusDiv.className = type;
-}
-
-// ================= RECENT =================
 function saveRecent(num) {
   let recent = JSON.parse(localStorage.getItem("recent") || "[]");
   recent = [num, ...recent.filter(n => n !== num)].slice(0, 5);
@@ -99,15 +81,15 @@ function saveRecent(num) {
 }
 
 function renderRecent() {
-  let recent = JSON.parse(localStorage.getItem("recent") || "[]");
+  const recent = JSON.parse(localStorage.getItem("recent") || "[]");
   recentDiv.innerHTML = recent.map(n => `<li>${n}</li>`).join("");
 }
 
-renderRecent();
-
-// ================= CLEAR =================
-clearBtn.addEventListener("click", () => {
+function clearAll() {
   input.value = "";
   resultsDiv.innerHTML = "";
   statusDiv.innerHTML = "";
-});
+}
+
+renderRecent();
+        
