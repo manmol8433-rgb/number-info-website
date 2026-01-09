@@ -1,107 +1,85 @@
-const API_URL = "https://project-n1s8.onrender.com/?num={num}&key=GOKU";
-const MAX_RESULTS = 4;
-const MAX_ALT_LEVEL = 3;
+const API_URL = "https://project-n1s8.onrender.com/?num=";
 
 const input = document.getElementById("numberInput");
-const resultsBox = document.getElementById("results");
-const statusBox = document.getElementById("status");
+const searchBtn = document.getElementById("searchBtn");
+const clearBtn = document.getElementById("clearBtn");
+const resultBox = document.getElementById("result");
 const recentBox = document.getElementById("recent");
 
-/* Utils */
-function normalize(n) {
-  n = String(n).replace(/\D/g, "");
-  if (n.startsWith("91") && n.length > 10) n = n.slice(2);
-  return n.length === 10 ? n : null;
+searchBtn.addEventListener("click", searchNumber);
+clearBtn.addEventListener("click", clearAll);
+
+function normalizeNumber(num) {
+  num = num.trim();
+  if (num.startsWith("91") && num.length > 10) {
+    num = num.slice(-10);
+  }
+  return num;
 }
 
-function dedupKey(info) {
-  return (info.name || "") + "|" + (info.father_name || "");
-}
-
-/* Main Search */
 async function searchNumber() {
-  const mainNum = normalize(input.value);
-  if (!mainNum) {
-    statusBox.innerHTML = "❌ Invalid number";
+  let num = normalizeNumber(input.value);
+
+  if (!/^\d{10}$/.test(num)) {
+    resultBox.innerHTML = "❌ Invalid number";
     return;
   }
 
-  statusBox.innerHTML = "⏳ Loading...";
-  resultsBox.innerHTML = "";
+  resultBox.innerHTML = "⏳ Loading...";
 
-  const queue = [mainNum];
-  const visited = {};
-  const seen = {};
-  let collected = [];
+  try {
+    const res = await fetch(API_URL + num);
+    const data = await res.json();
 
-  for (let i = 0; i < queue.length && i < MAX_ALT_LEVEL; i++) {
-    const num = queue[i];
-    if (visited[num]) continue;
-    visited[num] = true;
+    if (!data || !data.success || !Array.isArray(data.result) || data.result.length === 0) {
+      resultBox.innerHTML = "❌ No data found";
+      return;
+    }
 
-    try {
-      const res = await fetch(API_URL.replace("{num}", num));
-      const data = await res.json();
-      if (!data.result) continue;
+    showResults(data.result);
+    saveRecent(num);
 
-      for (const info of data.result) {
-        const key = dedupKey(info);
-        if (seen[key]) continue;
-        seen[key] = true;
-        collected.push(info);
-
-        ["mobile", "alt_mobile"].forEach(k => {
-          const alt = normalize(info[k]);
-          if (alt && !visited[alt]) queue.push(alt);
-        });
-
-        if (collected.length >= MAX_RESULTS) break;
-      }
-    } catch {}
+  } catch (e) {
+    resultBox.innerHTML = "❌ API error";
   }
+}
 
-  if (collected.length === 0) {
-    statusBox.innerHTML = "❌ No data found";
-    return;
-  }
+function showResults(list) {
+  let html = "";
 
-  statusBox.innerHTML = "✅ Result found";
-
-  collected.forEach(info => {
-    const div = document.createElement("div");
-    div.className = "card";
-
-    div.innerHTML = `
-      ${info.mobile ? `<b>📞</b> ${info.mobile}<br>` : ""}
-      ${info.alt_mobile ? `<b>☎️</b> ${info.alt_mobile}<br>` : ""}
-      ${info.name ? `<b>👤</b> ${info.name}<br>` : ""}
-      ${info.father_name ? `<b>👨</b> ${info.father_name}<br>` : ""}
-      ${info.address ? `<b>🏠</b> ${info.address}<br>` : ""}
-      ${info.email ? `<b>📧</b> ${info.email}<br>` : ""}
-      ${info.id_number ? `<b>🪪</b> ${info.id_number}<br>` : ""}
+  list.slice(0, 4).forEach((info, i) => {
+    html += `
+      <div class="card">
+        <h3>${i === 0 ? "🔍 Searched Number" : "🔁 Related Number"}</h3>
+        ${info.mobile ? `<p><b>📞 Number:</b> ${info.mobile}</p>` : ""}
+        ${info.alt_mobile ? `<p><b>☎️ Alt:</b> ${info.alt_mobile}</p>` : ""}
+        ${info.name ? `<p><b>👤 Name:</b> ${info.name}</p>` : ""}
+        ${info.father_name ? `<p><b>👨 Father:</b> ${info.father_name}</p>` : ""}
+        ${info.address ? `<p><b>🏠 Address:</b> ${info.address}</p>` : ""}
+        ${info.email ? `<p><b>📧 Email:</b> ${info.email}</p>` : ""}
+        ${info.id_number ? `<p><b>🪪 ID:</b> ${info.id_number}</p>` : ""}
+      </div>
     `;
-    resultsBox.appendChild(div);
   });
 
-  addRecent(mainNum);
+  resultBox.innerHTML = html;
 }
 
-/* Recent */
-function addRecent(num) {
-  const li = document.createElement("li");
-  li.textContent = num;
-  recentBox.prepend(li);
+function saveRecent(num) {
+  let list = JSON.parse(localStorage.getItem("recent")) || [];
+  list = [num, ...list.filter(n => n !== num)].slice(0, 5);
+  localStorage.setItem("recent", JSON.stringify(list));
+  renderRecent();
 }
 
-/* Events */
-document.getElementById("searchBtn").onclick = searchNumber;
+function renderRecent() {
+  let list = JSON.parse(localStorage.getItem("recent")) || [];
+  recentBox.innerHTML = list.map(n => `<div>${n}</div>`).join("");
+}
 
-document.getElementById("clearBtn").onclick = () => {
-  resultsBox.innerHTML = "";
-  statusBox.innerHTML = "";
+function clearAll() {
   input.value = "";
-};
-
-document.getElementById("darkToggle").onclick = () => {
-  document.body.classList.toggle("light");
-};
+  resultBox.innerHTML = "";
+}
+renderRecent();
+    
