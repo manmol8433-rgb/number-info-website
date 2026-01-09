@@ -28,9 +28,9 @@
 
 <script>
 /* ===== CONFIG ===== */
-const MAX_RESULTS = 20;
+const MAX_RESULTS = 10;
 const MAX_DEPTH = 5;
-const TIMEOUT = 5000;
+const TIMEOUT = 6000;
 
 /* ===== HELPERS ===== */
 function cleanNum(n) {
@@ -39,13 +39,25 @@ function cleanNum(n) {
   return n.length === 10 ? n : null;
 }
 
+/* STRONG PERSON KEY */
 function personKey(i) {
   return [
     (i.name||"").toLowerCase().trim(),
     (i.father_name||"").toLowerCase().trim(),
-    cleanNum(i.mobile),
-    cleanNum(i.alt_mobile)
+    cleanNum(i.mobile) || "",
+    cleanNum(i.alt_mobile) || ""
   ].join("|");
+}
+
+/* MERGE DATA (IMPORTANT FIX) */
+function mergePerson(oldP, newP) {
+  const merged = { ...oldP };
+  for (const k in newP) {
+    if (!merged[k] && newP[k]) {
+      merged[k] = newP[k];
+    }
+  }
+  return merged;
 }
 
 /* ===== API ===== */
@@ -55,7 +67,6 @@ async function fetchAPI(num) {
     encodeURIComponent(
       "https://project-n1s8.onrender.com/?num=" + num + "&key=GOKU"
     );
-
   try {
     const c = new AbortController();
     setTimeout(()=>c.abort(), TIMEOUT);
@@ -82,7 +93,7 @@ async function search() {
 
   let queue = [{ n: start, d: 0 }];
   let seenNums = { [start]: 1 };
-  let seenPeople = {};
+  let peopleMap = {};
   let results = [];
 
   for (let i = 0; i < queue.length; i++) {
@@ -96,10 +107,13 @@ async function search() {
 
     for (const info of data.result) {
       const key = personKey(info);
-      if (seenPeople[key]) continue;
 
-      seenPeople[key] = 1;
-      results.push(info);
+      if (peopleMap[key]) {
+        peopleMap[key] = mergePerson(peopleMap[key], info);
+      } else {
+        peopleMap[key] = info;
+        results.push(peopleMap[key]);
+      }
 
       ["mobile","alt_mobile"].forEach(x=>{
         const cn = cleanNum(info[x]);
@@ -113,7 +127,6 @@ async function search() {
     }
   }
 
-  /* ===== FINAL DECISION ===== */
   if (!results.length) {
     out.innerHTML = "<div class='error'>DATA NOT FOUND</div>";
     return;
