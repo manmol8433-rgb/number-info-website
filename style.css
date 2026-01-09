@@ -1,30 +1,16 @@
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background: linear-gradient(135deg, #1f2a44, #0f172a);
-  color: #fff;
-}
-
-body.dark {
-  background: #0b1020;
+  background: linear-gradient(135deg, #1e3c72, #2a5298);
+  color: white;
 }
 
 .app {
   max-width: 420px;
-  margin: 40px auto;
-  background: rgba(255,255,255,0.05);
+  margin: 30px auto;
   padding: 20px;
-  border-radius: 16px;
-  backdrop-filter: blur(10px);
-}
-
-h1 {
-  text-align: center;
-}
-
-.owner {
-  text-align: center;
-  opacity: 0.8;
+  background: rgba(255,255,255,0.15);
+  border-radius: 15px;
 }
 
 input, button {
@@ -36,53 +22,29 @@ input, button {
   font-size: 16px;
 }
 
-input {
-  background: #fff;
+#searchBtn {
+  background: linear-gradient(90deg, #6a5cff, #3ea6ff);
+  color: white;
 }
 
-button {
-  cursor: pointer;
-}
-
-button.primary {
-  background: linear-gradient(90deg, #6a5cff, #3aa0ff);
-  color: #fff;
-}
-
-#status {
-  margin-top: 15px;
-}
-
-.error {
-  color: #ff6b6b;
-}
-
-.loading {
-  color: #ffd166;
+#clearBtn {
+  background: #444;
+  color: white;
 }
 
 .card {
-  background: rgba(255,255,255,0.08);
-  padding: 12px;
+  background: rgba(255,255,255,0.2);
+  padding: 10px;
   margin-top: 10px;
-  border-radius: 10px;
-}
-
-ul {
-  padding-left: 20px;
-}
-
-ul li {
-  cursor: pointer;
-  margin-top: 5px;
+  border-radius: 8px;
 }
 
 .footer {
   margin-top: 20px;
   font-size: 14px;
-  opacity: 0.8;
 }
 
-.small {
-  font-size: 12px;
+/* DARK MODE */
+body.dark {
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
 }
