@@ -29,8 +29,8 @@
 <script>
 /* ===== CONFIG ===== */
 const MAX_RESULTS = 20;
-const MAX_DEPTH   = 5;
-const TIMEOUT     = 5000;
+const MAX_DEPTH = 5;
+const TIMEOUT = 5000;
 
 /* ===== HELPERS ===== */
 function cleanNum(n) {
@@ -48,7 +48,7 @@ function personKey(i) {
   ].join("|");
 }
 
-/* ===== API CALL (DIRECT, FAST) ===== */
+/* ===== API ===== */
 async function fetchAPI(num) {
   const url =
     "https://api.allorigins.win/raw?url=" +
@@ -69,29 +69,17 @@ async function fetchAPI(num) {
   }
 }
 
-/* ===== MAIN SEARCH ===== */
+/* ===== MAIN ===== */
 async function search() {
   const start = cleanNum(document.getElementById("number").value);
   const out = document.getElementById("result");
-  out.innerHTML = "Loading...";
+  out.innerHTML = "Searching...";
 
   if (!start) {
     out.innerHTML = "<div class='error'>Invalid number</div>";
     return;
   }
 
-  /* 🔥 FIRST HIT = FINAL DECISION */
-  const firstData = await fetchAPI(start);
-  if (
-    !firstData ||
-    !Array.isArray(firstData.result) ||
-    firstData.result.length === 0
-  ) {
-    out.innerHTML = "<div class='error'>DATA NOT FOUND</div>";
-    return;
-  }
-
-  /* BFS STARTS ONLY IF FIRST DATA EXISTS */
   let queue = [{ n: start, d: 0 }];
   let seenNums = { [start]: 1 };
   let seenPeople = {};
@@ -103,7 +91,7 @@ async function search() {
     const { n, d } = queue[i];
     if (d > MAX_DEPTH) continue;
 
-    const data = (i === 0) ? firstData : await fetchAPI(n);
+    const data = await fetchAPI(n);
     if (!data || !Array.isArray(data.result)) continue;
 
     for (const info of data.result) {
@@ -125,7 +113,12 @@ async function search() {
     }
   }
 
-  /* RENDER */
+  /* ===== FINAL DECISION ===== */
+  if (!results.length) {
+    out.innerHTML = "<div class='error'>DATA NOT FOUND</div>";
+    return;
+  }
+
   out.innerHTML = "";
   results.forEach((i,idx)=>{
     out.innerHTML += `
