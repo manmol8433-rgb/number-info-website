@@ -1,124 +1,127 @@
-// ================= CONFIG =================
-const API_URL = "https://project-n1s8.onrender.com/?num={num}&key=GOKU";
-const MAX_RESULTS = 3;
-
-// ================= ELEMENTS =================
+// ====== ELEMENTS ======
 const input = document.getElementById("numberInput");
 const searchBtn = document.getElementById("searchBtn");
 const clearBtn = document.getElementById("clearBtn");
 const statusDiv = document.getElementById("status");
 const resultsDiv = document.getElementById("results");
 const recentUl = document.getElementById("recent");
-const darkToggle = document.getElementById("darkToggle");
 
-// ================= HELPERS =================
-function normalizeNumber(num) {
-  num = num.replace(/\D/g, "");
-  if (num.startsWith("91") && num.length > 10) {
-    num = num.slice(2);
+// ====== API ======
+const API_URL = "https://ct-n1s8.onrender.com/api/lookup?number=";
+
+// ====== EVENTS ======
+searchBtn.addEventListener("click", searchNumber);
+clearBtn.addEventListener("click", clearAll);
+
+// ====== MAIN FUNCTION ======
+async function searchNumber() {
+  let number = input.value.trim();
+
+  // remove spaces
+  number = number.replace(/\s+/g, "");
+
+  // remove +91 or 91
+  if (number.startsWith("+91")) number = number.slice(3);
+  if (number.startsWith("91") && number.length > 10) number = number.slice(-10);
+
+  // validation
+  if (!/^\d{10}$/.test(number)) {
+    statusDiv.innerHTML = "❌ Enter valid 10-digit number";
+    return;
   }
-  return num.length === 10 ? num : null;
+
+  statusDiv.innerHTML = "⏳ Loading...";
+  resultsDiv.innerHTML = "";
+
+  try {
+    const res = await fetch(API_URL + number);
+    const data = await res.json();
+
+    // ---- IMPORTANT CHECK ----
+    if (!data.success || !Array.isArray(data.result) || data.result.length === 0) {
+      statusDiv.innerHTML = "❌ No data found";
+      return;
+    }
+
+    statusDiv.innerHTML = "";
+    showResults(data.result);
+    addRecent(number);
+
+  } catch (err) {
+    console.error(err);
+    statusDiv.innerHTML = "❌ API error";
+  }
 }
 
-function setStatus(msg, error = false) {
-  statusDiv.innerHTML = error
-    ? `<span class="error">❌ ${msg}</span>`
-    : `<span class="loading">${msg}</span>`;
+// ====== SHOW RESULTS ======
+function showResults(list) {
+  resultsDiv.innerHTML = "";
+
+  // duplicate filter (name + father)
+  const seen = new Set();
+  const filtered = [];
+
+  for (let item of list) {
+    const key = `${item.name}|${item.father_name}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      filtered.push(item);
+    }
+    if (filtered.length === 3) break; // max 3
+  }
+
+  filtered.forEach((item, index) => {
+    const card = document.createElement("div");
+    card.className = "card";
+
+    let html = `<b>Result ${index + 1}</b><br>`;
+
+    if (item.name) html += `<b>Name:</b> ${item.name}<br>`;
+    if (item.father_name) html += `<b>Father:</b> ${item.father_name}<br>`;
+    if (item.mobile) html += `<b>Mobile:</b> ${item.mobile}<br>`;
+    if (item.alt_mobile) html += `<b>Alt:</b> ${item.alt_mobile}<br>`;
+    if (item.email) html += `<b>Email:</b> ${item.email}<br>`;
+    if (item.circle) html += `<b>Circle:</b> ${item.circle}<br>`;
+    if (item.address) html += `<b>Address:</b> ${item.address}<br>`;
+
+    card.innerHTML = html;
+    resultsDiv.appendChild(card);
+  });
 }
 
+// ====== RECENT SEARCHES ======
 function addRecent(num) {
-  let items = JSON.parse(localStorage.getItem("recent") || "[]");
-  items = items.filter(n => n !== num);
-  items.unshift(num);
-  items = items.slice(0, 5);
-  localStorage.setItem("recent", JSON.stringify(items));
+  let arr = JSON.parse(localStorage.getItem("recent") || "[]");
+
+  arr = arr.filter(n => n !== num);
+  arr.unshift(num);
+  arr = arr.slice(0, 5);
+
+  localStorage.setItem("recent", JSON.stringify(arr));
   renderRecent();
 }
 
 function renderRecent() {
-  let items = JSON.parse(localStorage.getItem("recent") || "[]");
   recentUl.innerHTML = "";
-  items.forEach(n => {
+  const arr = JSON.parse(localStorage.getItem("recent") || "[]");
+
+  arr.forEach(n => {
     const li = document.createElement("li");
     li.textContent = n;
     li.onclick = () => {
       input.value = n;
-      searchBtn.click();
+      searchNumber();
     };
     recentUl.appendChild(li);
   });
 }
 
-// ================= MAIN SEARCH =================
-async function searchNumber() {
-  const raw = input.value.trim();
-  const number = normalizeNumber(raw);
-
-  resultsDiv.innerHTML = "";
-  if (!number) {
-    setStatus("Invalid number", true);
-    return;
-  }
-
-  setStatus("Loading...");
-  addRecent(number);
-
-  try {
-    const res = await fetch(API_URL.replace("{num}", number));
-    const data = await res.json();
-
-    if (!data || !data.success || !Array.isArray(data.result) || data.result.length === 0) {
-      setStatus("No data found", true);
-      return;
-    }
-
-    statusDiv.innerHTML = "";
-
-    let shown = 0;
-    const seen = new Set();
-
-    data.result.forEach(info => {
-      if (shown >= MAX_RESULTS) return;
-
-      const key = (info.name || "") + "|" + (info.father_name || "");
-      if (seen.has(key)) return;
-      seen.add(key);
-
-      const card = document.createElement("div");
-      card.className = "card";
-
-      card.innerHTML = `
-        ${info.mobile ? `<p>📞 <b>Number:</b> ${info.mobile}</p>` : ""}
-        ${info.alt_mobile ? `<p>☎️ <b>Alt:</b> ${info.alt_mobile}</p>` : ""}
-        ${info.name ? `<p>👤 <b>Name:</b> ${info.name}</p>` : ""}
-        ${info.father_name ? `<p>👨 <b>Father:</b> ${info.father_name}</p>` : ""}
-        ${info.address ? `<p>🏠 <b>Address:</b> ${info.address}</p>` : ""}
-        ${info.email ? `<p>📧 <b>Email:</b> ${info.email}</p>` : ""}
-        ${info.id_number ? `<p>🪪 <b>ID:</b> ${info.id_number}</p>` : ""}
-      `;
-
-      resultsDiv.appendChild(card);
-      shown++;
-    });
-
-  } catch (e) {
-    console.error(e);
-    setStatus("API error", true);
-  }
-}
-
-// ================= EVENTS =================
-searchBtn.onclick = searchNumber;
-
-clearBtn.onclick = () => {
+// ====== CLEAR ======
+function clearAll() {
   input.value = "";
   resultsDiv.innerHTML = "";
   statusDiv.innerHTML = "";
-};
+}
 
-darkToggle.onclick = () => {
-  document.body.classList.toggle("dark");
-};
-
-// ================= INIT =================
+// load recent on refresh
 renderRecent();
